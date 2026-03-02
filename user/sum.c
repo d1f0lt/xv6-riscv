@@ -7,21 +7,23 @@ const int MAX_INPUT_STRING_LENGTH = 512;
 
 int readLine(char *buffer) {
     char curChar;
-    int curPos = 0;
-    int cnt = read(0, &curChar, 1);
-    
-    while (curChar != '\n' && cnt != 0) {
+    int curPos = 0, cnt = 0;
+
+    while (1) {
+        cnt = read(0, &curChar, 1);
+
         if (cnt < 0) {
             fprintf(2, "Error while read\n");
             return 1;
         }
+        if (cnt == 0 || curChar == '\n') break;
         if (curPos >= MAX_INPUT_STRING_LENGTH) {
             fprintf(2, "Too long string\n");
             return 1;
         }
         buffer[curPos++] = curChar;
-        cnt = read(0, &curChar, 1);
-    }
+    };
+
     buffer[curPos] = '\0';
     return 0;
 }

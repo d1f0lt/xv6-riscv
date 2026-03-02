@@ -103,7 +103,8 @@ calc:
 	call exit
 
 invalid_input:
-	la a0, msg_err
-	call printf
+	li a0, 2
+	la a1, msg_err
+	call fprintf
 	li a0, 1
 	call exit
