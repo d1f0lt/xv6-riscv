@@ -10,6 +10,7 @@ int main(int argc, char *argv[]) {
 
     int pid = fork();
     if (pid < 0) {
+        fprintf(2, "fork failed\n");
         return 1;
     } else if (pid == 0) {
         pause(DELAY * 10);
@@ -19,13 +20,24 @@ int main(int argc, char *argv[]) {
 
         int returnCode = 0;
         if (strcmp(argv[1], "a") == 0) {
-            wait(&returnCode);
-            printf("Child's pid: %d\n Child's return code: %d\n", pid, returnCode);
-        } else {
-            kill(pid);
-            if (wait(&returnCode) == -1)
+            int childPid = wait(&returnCode);
+            if (childPid < 0) {
+                fprintf(2, "wait failed\n");
                 return 1;
-            printf("Victim's pid: %d\nVictim's code: %d\n", pid, returnCode);
+            }
+            printf("Child's pid: %d\n Child's return code: %d\n", childPid, returnCode);
+        } else {
+            if (kill(pid) < 0) {
+                fprintf(2, "kill failed");
+                return 1;
+            }
+            int childPid = wait(&returnCode);
+            if (childPid < 0) {
+                fprintf(2, "wait failed after kill\n");
+                return 1;
+            }
+            printf("Victim's pid: %d\nVictim's code: %d\n", childPid, returnCode);
         }
     }
+    return 0;
 }
