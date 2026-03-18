@@ -740,7 +740,14 @@ copy_procinfo_to_user_space(uint64 plist_addr, int lim)
 
     pi_local.pid = p->pid;
     pi_local.state = p->state;
-    pi_local.parent_pid = p->parent == 0 ? 0 : p->parent->pid;
+    if (p->parent != 0) {
+      pi_local.parent_pid = p->parent->pid;
+      safestrcpy(pi_local.pname, p->parent->name, PROCNAME_SIZE);
+    } else {
+      pi_local.parent_pid = 0;
+      safestrcpy(pi_local.pname, "-", PROCNAME_SIZE);
+    }
+    
     safestrcpy(pi_local.name, p->name, PROCNAME_SIZE);
 
     unlock(&locks);
