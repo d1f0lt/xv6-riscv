@@ -5,6 +5,7 @@
 #include "spinlock.h"
 #include "proc.h"
 #include "defs.h"
+#include "procinfo.h"
 
 struct cpu cpus[NCPU];
 
@@ -687,4 +688,74 @@ procdump(void)
     printf("%d %s %s", p->pid, state, p->name);
     printf("\n");
   }
+}
+
+struct all_lock
+{
+  struct spinlock *wait_lock;
+  struct spinlock *proc_lock;
+};
+
+void lock(struct all_lock *lock)
+{
+  acquire(lock->wait_lock);
+  acquire(lock->proc_lock);
+}
+
+void unlock(struct all_lock *lock)
+{
+  release(lock->proc_lock);
+  release(lock->wait_lock);
+}
+
+uint64
+copy_procinfo_to_user_space(uint64 plist_addr, int lim)
+{
+  struct proc *p;
+  struct procinfo pi_local;
+  int cnt = 0;
+  struct all_lock locks;
+  locks.wait_lock = &wait_lock;
+  for (p = proc; p < &proc[NPROC]; p++)
+  {
+    locks.proc_lock = &p->lock;
+    lock(&locks);
+
+    if (p->state == UNUSED)
+    {
+      unlock(&locks);
+      continue;
+    }
+    cnt++;
+    if (plist_addr == 0)
+    {
+      unlock(&locks);
+      continue;
+    }
+    if (cnt >= lim)
+    {
+      unlock(&locks);
+      return -1; // переполнение буфера
+    }
+
+    pi_local.pid = p->pid;
+    pi_local.state = p->state;
+    if (p->parent != 0) {
+      pi_local.parent_pid = p->parent->pid;
+      safestrcpy(pi_local.pname, p->parent->name, PROCNAME_SIZE);
+    } else {
+      pi_local.parent_pid = 0;
+      safestrcpy(pi_local.pname, "-", PROCNAME_SIZE);
+    }
+    
+    safestrcpy(pi_local.name, p->name, PROCNAME_SIZE);
+
+    unlock(&locks);
+
+    int res = copyout(myproc()->pagetable, plist_addr + (cnt - 1) * sizeof(struct procinfo), (char *)&pi_local, sizeof(struct procinfo));
+
+    if (res < 0)
+      return -2;
+  }
+  return cnt;
 }
