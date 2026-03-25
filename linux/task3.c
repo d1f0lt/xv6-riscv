@@ -10,11 +10,22 @@
 char buffer[PGSIZE];
 int curBufferPos = 0;
 
+int write_all(int desc, const char *s, int cnt) {
+    int total = 0;
+    while (total < cnt) {
+        int written = write(desc, s + total, cnt - total);
+        if (written <= 0)
+            return 1;
+        total += written;
+    }
+    return 0;
+}
+
 int flush(int desc) {
     if (curBufferPos == 0)
         return 0;
     // printf("Скидываю буффер: '%s'\n", buffer);
-    if (write(desc, buffer, curBufferPos) != curBufferPos) {
+    if (write_all(desc, buffer, curBufferPos) != 0) {
         return 1;
     }
     curBufferPos = 0;
@@ -69,7 +80,7 @@ int main(int argc, char *argv[]) {
         char readBuffer[PGSIZE];
         int n = 0;
         while ((n = read(STDIN_FILENO, readBuffer, sizeof(readBuffer))) > 0) {
-            if (write(STDOUT_FILENO, readBuffer, n) != n) {
+            if (write_all(STDOUT_FILENO, readBuffer, n) != 0) {
                 perror("write failed in child");
                 return 1;
             }

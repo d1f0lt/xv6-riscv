@@ -6,11 +6,22 @@
 char buffer[PGSIZE];
 int curBufferPos = 0;
 
+int write_all(int desc, const char *s, int cnt) {
+    int total = 0;
+    while (total < cnt) {
+        int written = write(desc, s + total, cnt - total);
+        if (written <= 0)
+            return 1;
+        total += written;
+    }
+    return 0;
+}
+
 int flush(int desc) {
     if (curBufferPos == 0)
         return 0;
     // printf("Скидываю в буффер: '%s'\n", buffer);
-    if (write(desc, buffer, curBufferPos) != curBufferPos)
+    if (write_all(desc, buffer, curBufferPos) != 0)
         return 1;
         
     curBufferPos = 0;
