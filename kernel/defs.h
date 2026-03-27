@@ -102,6 +102,13 @@ int             either_copyout(int user_dst, uint64 dst, void *src, uint64 len);
 int             either_copyin(void *dst, int user_src, uint64 src, uint64 len);
 void            procdump(void);
 
+// mutex.c
+int             mutexalloc(struct file **);
+void            mutexclose(struct sleeplock *);
+int             mutexlock(struct sleeplock *);
+int             mutexunlock(struct sleeplock *);
+void            mutexunlockifheld(struct sleeplock *);
+
 // swtch.S
 void            swtch(struct context*, struct context*);
 
@@ -135,6 +142,12 @@ void            argaddr(int, uint64 *);
 int             fetchstr(uint64, char*, int);
 int             fetchaddr(uint64, uint64*);
 void            syscall();
+
+// sysfile.c
+uint64          sys_mutex(void);
+uint64          sys_mutex_lock(void);
+uint64          sys_mutex_unlock(void);
+uint64          sys_mutex_close(void);
 
 // trap.c
 extern uint     ticks;

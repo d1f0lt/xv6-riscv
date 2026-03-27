@@ -61,6 +61,9 @@ fileclose(struct file *f)
 {
   struct file ff;
 
+  if(f->type == FD_MUTEX)
+    mutexunlockifheld(f->mutex);
+
   acquire(&ftable.lock);
   if(f->ref < 1)
     panic("fileclose");
@@ -79,7 +82,8 @@ fileclose(struct file *f)
     begin_op();
     iput(ff.ip);
     end_op();
-  }
+  } else if (ff.type == FD_MUTEX)
+    mutexclose(ff.mutex);
 }
 
 // Get metadata about file f.
@@ -110,6 +114,8 @@ fileread(struct file *f, uint64 addr, int n)
 
   if(f->readable == 0)
     return -1;
+  if(f->type == FD_MUTEX)
+    return -1;
 
   if(f->type == FD_PIPE){
     r = piperead(f->pipe, addr, n);
@@ -137,6 +143,8 @@ filewrite(struct file *f, uint64 addr, int n)
   int r, ret = 0;
 
   if(f->writable == 0)
+    return -1;
+  if(f->type == FD_MUTEX)
     return -1;
 
   if(f->type == FD_PIPE){
