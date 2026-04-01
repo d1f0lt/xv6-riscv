@@ -40,3 +40,8 @@ extern struct devsw devsw[];
 
 #define CONSOLE 1
 #define MY_DRIVER 2
+
+#define NULL_MINOR 0
+#define ZERO_MINOR 1
+#define NULLSTAT_MINOR 2
+#define URANDOM_MINOR 3

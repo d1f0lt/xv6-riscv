@@ -1,7 +1,13 @@
 #include "types.h"
+#include "param.h"
 #include "spinlock.h"
+#include "sleeplock.h"
+#include "fs.h"
 #include "file.h"
+#include "memlayout.h"
+#include "riscv.h"
 #include "defs.h"
+#include "proc.h"
 
 struct locks
 {
@@ -67,17 +73,17 @@ int driverread(int user_dst, uint64 dst, int n, int major, int minor)
 
     switch (minor)
     {
-    case 0: // null
+    case NULL_MINOR:
         return 0;
-    case 1: // zero
-        const int chunk = 64;
-        char zeros[chunk];
-        memset(zeros, 0, chunk);
+    case ZERO_MINOR:
+    {
+        char zeros[64];
+        memset(zeros, 0, sizeof(zeros));
 
-        uint read = 0;
+        int read = 0;
         while (read < n)
         {
-            int cnt = min(chunk, n - read);
+            int cnt = min((int)sizeof(zeros), n - read);
             if (either_copyout(user_dst, dst + read, zeros, cnt) == -1)
                 break;
             read += cnt;
@@ -85,9 +91,11 @@ int driverread(int user_dst, uint64 dst, int n, int major, int minor)
         if (read == 0 && n != 0)
             return -1;
         return read;
-    case 2: // nullstat
+    }
+    case NULLSTAT_MINOR:
         return write_u64_to_dst(user_dst, dst, n, get_nullstat());
-    case 3: // urandom
+    case URANDOM_MINOR:
+    {
         int read = 0;
         while (read < n)
         {
@@ -97,11 +105,12 @@ int driverread(int user_dst, uint64 dst, int n, int major, int minor)
                 char byte = (char)(rnd & 0xFF);
                 if (either_copyout(user_dst, dst + read, &byte, 1) == -1)
                     return read == 0 ? -1 : read;
-                rnd >>= sizeof(char);
+                rnd >>= 8;
                 read++;
             }
         }
         return read;
+    }
 
     default:
         return -1;
@@ -115,14 +124,14 @@ int driverwrite(int user_src, uint64 src, int n, int major, int minor)
 
     switch (minor)
     {
-    case 0: // null
+    case NULL_MINOR:
         return n;
-    case 1: // zero
+    case ZERO_MINOR: 
         return -1;
-    case 2: // nullstat
+    case NULLSTAT_MINOR:
         add_to_nullstat(n);
         return n;
-    case 3: // urandom
+    case URANDOM_MINOR: 
         if (n != sizeof(uint64))
             return -1;
         uint64 new_seed;
