@@ -107,3 +107,100 @@ sys_uptime(void)
   release(&tickslock);
   return xticks;
 }
+
+int
+validate_ad_flags(int flags)
+{
+  if(flags == 0)
+    return -1;
+  if((flags & ~(PTE_A | PTE_D)) != 0)
+    return -1;
+  return 0;
+}
+
+int
+validate_buffer_range(struct proc *p, uint64 addr, uint64 len, uint64 *first_page, uint64 *last_page)
+{
+  if(len == 0){
+    *first_page = 0;
+    *last_page = 0;
+    return 0;
+  }
+
+  if(addr >= p->sz)
+    return -1;
+
+  if(len > p->sz - addr)
+    return -1;
+
+  *first_page = PGROUNDDOWN(addr);
+  *last_page = PGROUNDDOWN(addr + len - 1);
+  return 0;
+}
+
+uint64
+sys_clearPageFlags(void)
+{
+  uint64 addr, len, first_page, last_page;
+  int flags;
+  struct proc *p = myproc();
+
+  argaddr(0, &addr);
+  argaddr(1, &len);
+  argint(2, &flags);
+
+  if(validate_ad_flags(flags) < 0)
+    return -1;
+
+  if(validate_buffer_range(p, addr, len, &first_page, &last_page) < 0)
+    return -1;
+
+  if(len == 0)
+    return 0;
+
+  for(uint64 va = first_page; ; va += PGSIZE){
+    pte_t *pte = walk(p->pagetable, va, 0);
+    if(pte == 0 || (*pte & PTE_V) == 0)
+      return -1;
+
+    *pte &= ~((pte_t)flags);
+
+    if(va == last_page) {
+      sfence_vma();
+      return 0;
+    }
+  }
+}
+
+uint64
+sys_checkPageFlags(void)
+{
+  uint64 addr, len, first_page, last_page;
+  int flags;
+  struct proc *p = myproc();
+
+  argaddr(0, &addr);
+  argaddr(1, &len);
+  argint(2, &flags);
+
+  if(validate_ad_flags(flags) < 0)
+    return -1;
+
+  if(validate_buffer_range(p, addr, len, &first_page, &last_page) < 0)
+    return -1;
+
+  if(len == 0)
+    return 0;
+
+  for(uint64 va = first_page; ; va += PGSIZE){
+    pte_t *pte = walk(p->pagetable, va, 0);
+    if(pte == 0 || (*pte & PTE_V) == 0)
+      return -1;
+
+    if((*pte & (pte_t)flags) != 0)
+      return 1;
+
+    if(va == last_page)
+      return 0;
+  }
+}
