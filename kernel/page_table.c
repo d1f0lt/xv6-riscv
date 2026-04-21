@@ -27,14 +27,19 @@ void print_format_index(int ind)
         printf("%d", ind);
 }
 
-void print_recursively(pagetable_t pagetable, int depth)
+
+void print_recursively(pagetable_t pagetable, int depth, uint64 va_prefix, uint64 usersz)
 {
     int max_depth = 2;
-    for (int i = 1; i <= 512; i++)
+    int level = max_depth - depth;
+
+    for (int i = 0; i < 512; i++)
     {
         pte_t pte = pagetable[i];
         if ((pte & PTE_V) == 0)
             continue;
+
+        uint64 next_va_prefix = va_prefix | ((uint64)i << PXSHIFT(level));
 
         for (int j = 0; j < depth; j++)
             printf("         ");
@@ -46,12 +51,13 @@ void print_recursively(pagetable_t pagetable, int depth)
         if (depth == max_depth)
         {
             print_flags(pte);
+            printf(" va=0x%lx", next_va_prefix);
             printf("\n");
         }
         else
         {
             printf("\n");
-            print_recursively((pagetable_t)PTE2PA(pte), depth + 1);
+            print_recursively((pagetable_t)PTE2PA(pte), depth + 1, next_va_prefix, usersz);
         }
     }
 }
@@ -66,8 +72,8 @@ uint64 sys_printPageTable(void)
     }
 
     pagetable_t pagetable = p->pagetable;
-    printf("PAGETABLE 0x%lx\n", (uint64)pagetable);
-    print_recursively(pagetable, 0);
+    printf("PAGETABLE 0x%lx (sz=0x%lx)\n", (uint64)pagetable, p->sz);
+    print_recursively(pagetable, 0, 0, p->sz);
 
     return 0;
 }
