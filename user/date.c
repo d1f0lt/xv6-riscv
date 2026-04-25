@@ -1,30 +1,33 @@
 #include "kernel/types.h"
 #include "user/user.h"
 
-int
-is_leap(int year)
+int64
+floor_div(int64 a, int64 b)
 {
-    if (year % 400 == 0)
-        return 1;
-    if (year % 100 == 0)
-        return 0;
-    return (year % 4) == 0;
+    int64 q;
+    int64 r;
+
+    q = a / b;
+    r = a % b;
+    if (r < 0)
+        q -= 1;
+    return q;
 }
 
-int
-days_in_month(int year, int month)
+int64
+floor_mod(int64 a, int64 b)
 {
-    static int month_days[12] = {
-        31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31};
+    int64 r;
 
-    if (month == 2 && is_leap(year))
-        return 29;
-    return month_days[month - 1];
+    r = a % b;
+    if (r < 0)
+        r += b;
+    return r;
 }
 
 void
-split_hms(uint64 secs_in_day, int *hour, int *minute, int *second,
-          uint64 sec_per_hour, uint64 sec_per_min)
+split_hms(int64 secs_in_day, int *hour, int *minute, int *second,
+          int64 sec_per_hour, int64 sec_per_min)
 {
     *hour = (int)(secs_in_day / sec_per_hour);
     secs_in_day %= sec_per_hour;
@@ -33,37 +36,28 @@ split_hms(uint64 secs_in_day, int *hour, int *minute, int *second,
 }
 
 void
-split_ymd(uint64 days, int *year, int *month, int *day)
+split_ymd(int64 days, int *year, int *month, int *day)
 {
-    int y, m;
+    int64 z;
+    int64 era;
+    int64 doe;
+    int64 yoe;
+    int64 y;
+    int64 doy;
+    int64 mp;
 
-    y = 1970;
-    while (1)
-    {
-        int ydays;
+    z = days + 719468;
+    era = (z >= 0 ? z : z - 146096) / 146097;
+    doe = z - era * 146097;
+    yoe = (doe - doe / 1460 + doe / 36524 - doe / 146096) / 365;
+    y = yoe + era * 400;
+    doy = doe - (365 * yoe + yoe / 4 - yoe / 100);
+    mp = (5 * doy + 2) / 153;
 
-        ydays = is_leap(y) ? 366 : 365;
-        if (days < (uint64)ydays)
-            break;
-        days -= (uint64)ydays;
-        y++;
-    }
-
-    m = 1;
-    while (m <= 12)
-    {
-        int mdays;
-
-        mdays = days_in_month(y, m);
-        if (days < (uint64)mdays)
-            break;
-        days -= (uint64)mdays;
-        m++;
-    }
-
-    *year = y;
-    *month = m;
-    *day = (int)days + 1;
+    *day = (int)(doy - (153 * mp + 2) / 5 + 1);
+    *month = (int)(mp + (mp < 10 ? 3 : -9));
+    y += (*month <= 2);
+    *year = (int)y;
 }
 
 void
@@ -79,7 +73,7 @@ print_frac_ns(uint32 value)
 {
     uint32 div;
 
-    div = 1e8;
+    div = 100000000;
     while (div > 0)
     {
         printf("%d", (int)(value / div));
@@ -110,21 +104,21 @@ print_datetime(int year, int month, int day,
 int
 main(int argc, char *argv[])
 {
-    const uint64 ns_per_sec = (uint64)1e9, sec_per_min = 60ULL,
-                 sec_per_hour = 60ULL * sec_per_min,
-                 sec_per_day = 24ULL * sec_per_hour;
-    uint64 ns, secs, days, secs_in_day;
+    const int64 ns_per_sec = 1000000000LL, sec_per_min = 60LL,
+                sec_per_hour = 60LL * sec_per_min,
+                sec_per_day = 24LL * sec_per_hour;
+    int64 ns, secs, days, secs_in_day;
     int year, month, day, hour, minute, second;
     uint32 frac_ns;
 
     (void)argc;
     (void)argv;
 
-    ns = rtctime();
-    secs = ns / ns_per_sec;
-    frac_ns = (uint32)(ns % ns_per_sec);
-    days = secs / sec_per_day;
-    secs_in_day = secs % sec_per_day;
+    ns = (int64)rtctime();
+    secs = floor_div(ns, ns_per_sec);
+    frac_ns = (uint32)floor_mod(ns, ns_per_sec);
+    days = floor_div(secs, sec_per_day);
+    secs_in_day = floor_mod(secs, sec_per_day);
 
     split_hms(secs_in_day, &hour, &minute, &second, sec_per_hour, sec_per_min);
     split_ymd(days, &year, &month, &day);
