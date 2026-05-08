@@ -298,6 +298,9 @@ kfork(void)
   np->parent = p;
   release(&wait_lock);
 
+  if(check_log_enabled(LOG_PROC))
+    pr_msg("fork parent=%d %s child=%d %s", p->pid, p->name, np->pid, np->name);
+
   acquire(&np->lock);
   np->state = RUNNABLE;
   release(&np->lock);
@@ -346,6 +349,11 @@ kexit(int status)
   p->cwd = 0;
 
   acquire(&wait_lock);
+
+  if(check_log_enabled(LOG_PROC)){
+    int ppid = p->parent ? p->parent->pid : -1;
+    pr_msg("exit pid=%d %s parent=%d", p->pid, p->name, ppid);
+  }
 
   // Give any children to init.
   reparent(p);
