@@ -107,3 +107,32 @@ sys_uptime(void)
   release(&tickslock);
   return xticks;
 }
+
+uint64
+sys_dmesg(void)
+{
+  uint64 dst;
+  int max;
+
+  argaddr(0, &dst);
+  argint(1, &max);
+  if(max <= 0)
+    return -1;
+
+  return dmsg_copyout(myproc()->pagetable, dst, max);
+}
+
+uint64
+sys_logctl(void)
+{
+  int mask;
+  int enable;
+  int duration;
+
+  argint(0, &mask);
+  argint(1, &enable);
+  argint(2, &duration);
+
+  logctl(mask, enable, duration);
+  return 0;
+}

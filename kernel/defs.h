@@ -77,6 +77,14 @@ int             printf(char*, ...) __attribute__ ((format (printf, 1, 2)));
 void            panic(char*) __attribute__((noreturn));
 void            printfinit(void);
 
+// dmsg.c
+void            dmsg_init(void);
+void            dmsg_putc(char);
+void            pr_msg(char*, ...) __attribute__ ((format (printf, 1, 2)));
+int             dmsg_copyout(pagetable_t, uint64, int);
+int             check_log_enabled(int);
+void            logctl(int, int, int);
+
 // proc.c
 int             cpuid(void);
 void            kexit(int);

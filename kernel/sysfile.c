@@ -463,6 +463,9 @@ sys_exec(void)
 
   int ret = kexec(path, argv);
 
+  if(ret >= 0 && check_log_enabled(LOG_EXEC))
+    pr_msg("exec pid=%d path=%s", myproc()->pid, path);
+
   for(i = 0; i < NELEM(argv) && argv[i] != 0; i++)
     kfree(argv[i]);
 
