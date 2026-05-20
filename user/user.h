@@ -24,6 +24,9 @@ int getpid(void);
 char* sys_sbrk(int,int);
 int pause(int);
 int uptime(void);
+int printPageTable(void);
+int clearPageFlags(void *, int, int);
+int checkPageFlags(void *, int, int);
 
 // ulib.c
 int stat(const char*, struct stat*);
